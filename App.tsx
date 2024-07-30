@@ -160,16 +160,46 @@
 // export default App;
 
 import 'react-native-gesture-handler';
-import React from 'react';
+import React, {useEffect} from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import messaging from '@react-native-firebase/messaging';
 import Login from './app/screens/Login';
 import Signup from './app/screens/Signup';
+import {Alert} from 'react-native';
 import ForgotPassword from './app/screens/ForgotPassword';
 
 const Stack = createNativeStackNavigator();
 
 function App(): React.JSX.Element {
+  async function requestUserPermission() {
+    const authStatus = await messaging().requestPermission();
+    const enabled =
+      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+    if (enabled) {
+      console.log('Authorization status:', authStatus);
+    }
+  }
+
+  const getToken = async () => {
+    const token = await messaging().getToken();
+    console.log('Token =', token);
+  };
+
+  useEffect(() => {
+    requestUserPermission();
+    getToken();
+
+    const unsubscribe = messaging().onMessage(async remoteMessage => {
+      console.log('A new FCM message arrived!', remoteMessage);
+      Alert.alert('A new FCM message arrived!', JSON.stringify(remoteMessage));
+    });
+
+    return unsubscribe;
+  }, []);
+
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Login">

@@ -37,7 +37,7 @@ target 'ProjectApp' do
 
   target 'ProjectAppTests' do
     inherit! :complete
-    # Pods for testing
+    # Pods for testingpod insta
   end
 
   post_install do |installer|
