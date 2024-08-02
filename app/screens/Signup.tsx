@@ -1,164 +1,258 @@
-import React, {useEffect} from 'react';
+import React, {useState} from 'react';
 import {
   View,
   Text,
   TextInput,
   StyleSheet,
-  Button,
-  Alert,
   TouchableOpacity,
+  Alert,
+  Dimensions,
+  ImageBackground, // Import ImageBackground
 } from 'react-native';
+import {Formik} from 'formik';
+import * as Yup from 'yup';
 import auth from '@react-native-firebase/auth';
-import {useAuthStore} from '../../store';
-import { useNavigation } from '@react-navigation/native';
+import firestore from '@react-native-firebase/firestore';
+import {useNavigation} from '@react-navigation/native';
+import DatePicker from 'react-native-date-picker';
+
+const {width} = Dimensions.get('window');
+
+const validationSchema = Yup.object().shape({
+  email: Yup.string().email('Invalid email').required('Required'),
+  password: Yup.string().required('Required'),
+  confirmPassword: Yup.string()
+    .oneOf([Yup.ref('password'), null], 'Passwords must match')
+    .required('Required'),
+  name: Yup.string().required('Required'),
+  dateOfBirth: Yup.date().required('Required'),
+});
 
 const Signup: React.FC = () => {
-  const {
-    name,
-    email,
-    password,
-    confirmPassword,
-    error,
-    setName,
-    setEmail,
-    setPassword,
-    setConfirmPassword,
-    setError,
-    clearAuth,
-  } = useAuthStore();
+  const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>(undefined);
+  const [openDatePicker, setOpenDatePicker] = useState(false);
   const navigation = useNavigation();
-  useEffect(() => {
-    // Clear all fields and error when the component mounts
-    clearAuth();
-  }, [clearAuth]);
 
-  const handleSignup = async () => {
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
+  const handleSignup = async (values: {
+    email: string;
+    password: string;
+    confirmPassword: string;
+    name: string;
+    dateOfBirth: Date;
+  }) => {
     try {
-      await auth().createUserWithEmailAndPassword(email, password);
-      const user = auth().currentUser;
+      const {user} = await auth().createUserWithEmailAndPassword(
+        values.email,
+        values.password,
+      );
+
       if (user) {
-        await user.updateProfile({
-          displayName: name,
-        });
-        Alert.alert('Success', 'User registered successfully');
-        clearAuth(); // Clear fields and error on successful registration
-      } else {
-        setError('Failed to register user');
+        await user.updateProfile({displayName: values.name});
+
+        try {
+          await firestore().collection('users').doc(user.uid).set({
+            name: values.name,
+            email: values.email,
+            dateOfBirth: values.dateOfBirth.toDateString(),
+            followers: 0,
+            totalLikes: 0,
+          });
+          Alert.alert('Success', 'User registered successfully');
+          navigation.navigate('Home');
+        } catch (firestoreError) {
+          Alert.alert('Signup Error', 'Unable to store user data.');
+        }
       }
-    } catch (er1) {
-      console.error('Signup error:', er1); // Log error details
-      if (er1.code === 'auth/invalid-email') {
-        setError('Invalid email address');
-      } else if (er1.code === 'auth/weak-password') {
-        setError('Password is too weak');
-      } else if (er1.code === 'auth/email-already-in-use') {
-        setError('Email already in use');
-      } else {
-        setError('Registration failed. Please try again.');
-      }
+    } catch (authError) {
+      Alert.alert('Signup Error', 'Unable to register.');
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Signup</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter your name"
-        placeholderTextColor="#aaa"
-        value={name}
-        onChangeText={setName}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Enter your email"
-        placeholderTextColor="#aaa"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Enter your password"
-        placeholderTextColor="#aaa"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Confirm your password"
-        placeholderTextColor="#aaa"
-        secureTextEntry
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-      />
-      <TouchableOpacity style={styles.button} onPress={handleSignup}>
-        <Text style={styles.buttonText}>Signup</Text>
-      </TouchableOpacity>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <TouchableOpacity
-        style={styles.link}
-        onPress={() => navigation.navigate('Login')}>
-        <Text style={styles.linkText}>Already have an account? Login</Text>
-      </TouchableOpacity>
-    </View>
+    <ImageBackground
+      source={require('../images/christiann-koepke-b9xUX3HR5nQ-unsplash.jpg')} // Add your background image path
+      style={styles.backgroundImage}
+      imageStyle={{opacity: 1}} // Adjust the opacity for transparency effect
+    >
+      <Formik
+        initialValues={{
+          email: '',
+          password: '',
+          confirmPassword: '',
+          name: '',
+          dateOfBirth: '',
+        }}
+        validationSchema={validationSchema}
+        onSubmit={handleSignup}>
+        {({
+          handleChange,
+          handleBlur,
+          handleSubmit,
+          values,
+          errors,
+          touched,
+          setFieldValue,
+        }) => (
+          <View style={styles.container}>
+            <Text style={styles.title}>Create Account</Text>
+            <View style={styles.form}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Name</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your name"
+                  placeholderTextColor="transparent"
+                  onChangeText={handleChange('name')}
+                  onBlur={handleBlur('name')}
+                  value={values.name}
+                />
+              </View>
+              {touched.name && errors.name && (
+                <Text style={styles.error}>{errors.name}</Text>
+              )}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Email address</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your email"
+                  placeholderTextColor="transparent"
+                  onChangeText={handleChange('email')}
+                  onBlur={handleBlur('email')}
+                  value={values.email}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+              </View>
+              {touched.email && errors.email && (
+                <Text style={styles.error}>{errors.email}</Text>
+              )}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Password</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your password"
+                  placeholderTextColor="transparent"
+                  secureTextEntry
+                  onChangeText={handleChange('password')}
+                  onBlur={handleBlur('password')}
+                  value={values.password}
+                />
+              </View>
+              {touched.password && errors.password && (
+                <Text style={styles.error}>{errors.password}</Text>
+              )}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Confirm Password</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Confirm your password"
+                  placeholderTextColor="transparent"
+                  secureTextEntry
+                  onChangeText={handleChange('confirmPassword')}
+                  onBlur={handleBlur('confirmPassword')}
+                  value={values.confirmPassword}
+                />
+              </View>
+              {touched.confirmPassword && errors.confirmPassword && (
+                <Text style={styles.error}>{errors.confirmPassword}</Text>
+              )}
+              <TouchableOpacity
+                style={styles.input}
+                onPress={() => setOpenDatePicker(true)}>
+                <Text>
+                  {dateOfBirth
+                    ? dateOfBirth.toDateString()
+                    : 'Select Date of Birth'}
+                </Text>
+              </TouchableOpacity>
+              {touched.dateOfBirth && errors.dateOfBirth && (
+                <Text style={styles.error}>{errors.dateOfBirth}</Text>
+              )}
+              <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+                <Text style={styles.buttonText}>Sign Up</Text>
+              </TouchableOpacity>
+            </View>
+            <DatePicker
+              modal
+              open={openDatePicker}
+              date={dateOfBirth || new Date()}
+              mode="date"
+              onConfirm={date => {
+                setOpenDatePicker(false);
+                setDateOfBirth(date);
+                setFieldValue('dateOfBirth', date);
+              }}
+              onCancel={() => setOpenDatePicker(false)}
+            />
+          </View>
+        )}
+      </Formik>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    resizeMode: 'cover', // Cover the entire screen with the image
+  },
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#e0f7fa', // Light blue background
+    backgroundColor: 'rgba(255, 255, 255, 0.8)', // Add white background with opacity for transparency
+    paddingHorizontal: 20,
   },
   title: {
-    fontSize: 32,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#00796b',
+    color: '#333',
     marginBottom: 20,
+    fontFamily: 'Arial',
+  },
+  form: {
+    width: '100%',
+  },
+  inputContainer: {
+    marginBottom: 5, // Reduced marginBottom for tighter spacing
+  },
+  label: {
+    fontSize: 16,
+    color: '#999999',
+    marginBottom: 0, // Reduced marginBottom for tighter spacing
+    fontFamily: 'Arial',
   },
   input: {
-    height: 50,
-    borderColor: '#00796b',
-    borderWidth: 2,
-    borderRadius: 25,
-    marginBottom: 15,
-    width: '85%',
-    paddingHorizontal: 20,
-    backgroundColor: '#ffffff',
+    height: 45,
+    borderBottomColor: '#cccccc',
+    borderBottomWidth: 1,
+    paddingHorizontal: 10,
+    backgroundColor: 'transparent',
+    fontFamily: 'Arial',
+    fontSize: 16,
+    color: 'black',
   },
   button: {
-    backgroundColor: '#00796b',
-    borderRadius: 25,
-    paddingVertical: 10,
+    backgroundColor: '#4CAF50',
+    borderRadius: 8,
+    paddingVertical: 12,
     paddingHorizontal: 30,
+    width: '100%',
     marginTop: 10,
   },
   buttonText: {
     color: '#ffffff',
     fontSize: 18,
     fontWeight: 'bold',
+    fontFamily: 'Arial',
+    textAlign: 'center',
   },
   error: {
-    marginTop: 15,
     fontSize: 16,
     color: 'red',
-  },
-  link: {
-    marginTop: 20,
-  },
-  linkText: {
-    color: '#00796b',
-    fontSize: 16,
-    fontWeight: '500',
+    marginTop: -10,
+    marginBottom: 10,
+    fontFamily: 'Arial',
   },
 });
 

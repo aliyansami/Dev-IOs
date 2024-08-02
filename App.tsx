@@ -158,39 +158,77 @@
 //   );
 // }
 // export default App;
-
 import 'react-native-gesture-handler';
-import React, {useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import messaging from '@react-native-firebase/messaging';
 import Login from './app/screens/Login';
 import Signup from './app/screens/Signup';
-import {Alert} from 'react-native';
+import Home from './app/screens/Home';
+import RecipeTestPage from './app/screens/TestRecipe';
+import {Alert, View, ActivityIndicator} from 'react-native';
 import ForgotPassword from './app/screens/ForgotPassword';
+import auth from '@react-native-firebase/auth';
 
 const Stack = createNativeStackNavigator();
 
 function App(): React.JSX.Element {
-  async function requestUserPermission() {
-    const authStatus = await messaging().requestPermission();
-    const enabled =
-      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+  const [initializing, setInitializing] = useState(true);
+  const [user, setUser] = useState(null);
 
-    if (enabled) {
-      console.log('Authorization status:', authStatus);
-    }
-  }
-
-  const getToken = async () => {
-    const token = await messaging().getToken();
-    console.log('Token =', token);
+  const onAuthStateChanged = user => {
+    setUser(user);
+    if (initializing) setInitializing(false);
   };
 
   useEffect(() => {
+    const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
+    return subscriber; // unsubscribe on unmount
+  }, []);
+
+  useEffect(() => {
+    async function requestUserPermission() {
+      const authStatus = await messaging().requestPermission();
+      const enabled =
+        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+      if (enabled) {
+        console.log('Authorization status:', authStatus);
+      }
+    }
+
+    const getToken = async () => {
+      const token = await messaging().getToken();
+      console.log('Token =', token);
+    };
+
     requestUserPermission();
     getToken();
+
+    messaging()
+      .getInitialNotification()
+      .then(remoteMessage => {
+        if (remoteMessage) {
+          console.log(
+            'Notification caused app to open from quit state:',
+            remoteMessage.notification,
+          );
+        }
+      });
+
+    messaging().onNotificationOpenedApp(remoteMessage => {
+      console.log(
+        'Notification caused app to open from background state:',
+        remoteMessage.notification,
+      );
+    });
+
+    // Background message handler (for use in service worker)
+    messaging().setBackgroundMessageHandler(async remoteMessage => {
+      console.log('Message handled in the background!', remoteMessage);
+    });
 
     const unsubscribe = messaging().onMessage(async remoteMessage => {
       console.log('A new FCM message arrived!', remoteMessage);
@@ -200,9 +238,22 @@ function App(): React.JSX.Element {
     return unsubscribe;
   }, []);
 
+  if (initializing) {
+    return (
+      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login">
+      <Stack.Navigator initialRouteName={user ? 'Home' : 'Login'}>
+        <Stack.Screen
+          name="Home"
+          component={Home}
+          options={{headerShown: false}}
+        />
         <Stack.Screen
           name="Login"
           component={Login}
@@ -210,8 +261,10 @@ function App(): React.JSX.Element {
         />
         <Stack.Screen name="Signup" component={Signup} />
         <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+        <Stack.Screen name="RecipeTestPage" component={RecipeTestPage} />
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
+
 export default App;

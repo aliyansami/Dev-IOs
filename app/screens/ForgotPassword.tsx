@@ -1,10 +1,9 @@
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   StyleSheet,
-  Button,
   Alert,
   TouchableOpacity,
 } from 'react-native';
@@ -33,6 +32,7 @@ const ForgotPassword: React.FC = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Forgot Password</Text>
+      <Text style={styles.subtitle}>Enter your email to reset your password</Text>
       <TextInput
         style={styles.input}
         placeholder="Enter your email"
@@ -55,40 +55,50 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#e0f7fa', // Light blue gradient background
+    backgroundColor: '#f0f4f7', // Soft background color
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
-    color: '#00796b',
-    marginBottom: 20,
+    color: '#333',
+    marginBottom: 5,
+    fontFamily: 'Arial', // Add custom font if available
+  },
+  subtitle: {
+    fontSize: 18,
+    color: '#666',
+    marginBottom: 30,
+    fontFamily: 'Arial', // Add custom font if available
   },
   input: {
     height: 50,
     borderColor: '#00796b',
-    borderWidth: 2,
-    borderRadius: 25,
-    marginBottom: 20,
-    width: '80%',
-    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderRadius: 10,
+    marginBottom: 15,
+    width: '85%',
+    paddingHorizontal: 15,
     backgroundColor: '#ffffff',
+    fontFamily: 'Arial', // Add custom font if available
   },
   button: {
     backgroundColor: '#00796b',
-    borderRadius: 25,
-    paddingVertical: 10,
-    paddingHorizontal: 30,
-    marginBottom: 10,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 35,
+    marginTop: 10,
   },
   buttonText: {
     color: '#ffffff',
     fontSize: 18,
     fontWeight: 'bold',
+    fontFamily: 'Arial', // Add custom font if available
   },
   error: {
-    marginTop: 10,
+    marginTop: 15,
     fontSize: 16,
     color: 'red',
+    fontFamily: 'Arial', // Add custom font if available
   },
 });
 

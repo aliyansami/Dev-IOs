@@ -1,75 +1,108 @@
-import React, {useState} from 'react';
+import React from 'react';
 import {
   View,
   Text,
   TextInput,
   StyleSheet,
-  Button,
   Alert,
   TouchableOpacity,
+  Image,
+  Dimensions,
 } from 'react-native';
-import {useAuthStore} from '../../store'; // Adjust the path as needed
+import {useFormik} from 'formik';
+import * as Yup from 'yup';
 import auth from '@react-native-firebase/auth';
 import {useNavigation} from '@react-navigation/native';
 
-const Login: React.FC = () => {
-  const [inputEmail, setInputEmail] = useState('');
-  const [inputPassword, setInputPassword] = useState('');
+const {width} = Dimensions.get('window');
 
-  const {email, password, error, setEmail, setPassword, setError, clearAuth} =
-    useAuthStore();
+const validationSchema = Yup.object().shape({
+  email: Yup.string()
+    .email('Invalid email address')
+    .required('Email is required'),
+  password: Yup.string().required('Password is required'),
+});
+
+const Login: React.FC = () => {
   const navigation = useNavigation();
 
-  const handleLogin = async () => {
-    try {
-      await auth().signInWithEmailAndPassword(inputEmail, inputPassword);
-      // Update Zustand store
-      setEmail(inputEmail);
-      setPassword(inputPassword);
-      setError('');
-      Alert.alert('Success', 'User Logged In successfully');
-      console.log('Logged In');
-    } catch (e) {
-      setError('Authentication failed. Please check your credentials.');
-      Alert.alert('Incorrect email or Password');
-      clearAuth(); // Clear auth details on error
-    }
-  };
+  const {handleChange, handleBlur, handleSubmit, values, errors, touched} =
+    useFormik({
+      initialValues: {email: '', password: ''},
+      validationSchema,
+      onSubmit: async values => {
+        try {
+          await auth().signInWithEmailAndPassword(
+            values.email,
+            values.password,
+          );
+          navigation.navigate('Home');
+        } catch (e) {
+          Alert.alert('Incorrect email or password');
+        }
+      },
+    });
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter your email"
-        placeholderTextColor="#aaa"
-        value={inputEmail}
-        onChangeText={setInputEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
+      <Image
+        source={require('../images/element5-digital-acrBf9BlfvE-unsplash.jpg')}
+        style={styles.image}
+        resizeMode="cover"
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Enter your password"
-        placeholderTextColor="#aaa"
-        secureTextEntry
-        value={inputPassword}
-        onChangeText={setInputPassword}
-      />
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Login</Text>
-      </TouchableOpacity>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <TouchableOpacity
-        style={styles.link}
-        onPress={() => navigation.navigate('Signup')}>
-        <Text style={styles.linkText}>Don't have an account? Signup</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.link}
-        onPress={() => navigation.navigate('ForgotPassword')}>
-        <Text style={styles.linkText}>Forgot Password?</Text>
-      </TouchableOpacity>
+      <View style={styles.overlay}>
+        <Text style={styles.title}>Welcome!</Text>
+        <Text style={styles.subtitle}>Log in to your account</Text>
+      </View>
+      <View style={styles.form}>
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Email address</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your email"
+            placeholderTextColor="transparent" // Hide placeholder text
+            value={values.email}
+            onChangeText={handleChange('email')}
+            onBlur={handleBlur('email')}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+        </View>
+        {touched.email && errors.email && (
+          <Text style={styles.error}>{errors.email}</Text>
+        )}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Password</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your password"
+            placeholderTextColor="transparent" // Hide placeholder text
+            secureTextEntry
+            value={values.password}
+            onChangeText={handleChange('password')}
+            onBlur={handleBlur('password')}
+          />
+          <TouchableOpacity
+            style={styles.forgotPasswordLink}
+            onPress={() => navigation.navigate('ForgotPassword')}>
+            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+          </TouchableOpacity>
+        </View>
+        {touched.password && errors.password && (
+          <Text style={styles.error}>{errors.password}</Text>
+        )}
+        <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+          <Text style={styles.buttonText}>Login</Text>
+        </TouchableOpacity>
+        <View style={styles.signupContainer}>
+          <Text style={styles.linkText}>New to Scratch?</Text>
+          <TouchableOpacity
+            style={styles.createAccountButton}
+            onPress={() => navigation.navigate('Signup')}>
+            <Text style={styles.createAccountText}>Create Account Here</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 };
@@ -79,48 +112,115 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#e0f7fa', // Light blue gradient background
+    backgroundColor: '#fff',
+  },
+  image: {
+    width: width,
+    height: 250,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    opacity: 0.7, // Transparent effect
+    borderBottomRightRadius: 150, // Curved bottom-right corner
+  },
+  overlay: {
+    position: 'absolute',
+    top: 190, // Adjust as needed
+    left: 15, // Align overlay with the image edge
+    right: 0,
+    zIndex: 1, // Ensure overlay is above the image
+    alignItems: 'center', // Center align overlay content
   },
   title: {
-    fontSize: 28,
+    fontSize: 22, // Slightly larger for better emphasis
     fontWeight: 'bold',
-    color: '#00796b',
+    color: '#333',
+    marginBottom: 5,
+    fontFamily: 'Arial',
+  },
+  subtitle: {
+    fontSize: 15, // Slightly larger for better emphasis
+    color: '#666',
+    marginBottom: 30,
+    fontFamily: 'Arial',
+  },
+  form: {
+    marginTop: 220, // To position form below the image and overlay
+    width: '80%',
+    alignItems: 'center',
+  },
+  inputContainer: {
+    width: '100%',
     marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    color: '#999999',
+    marginBottom: 8, // Increased margin for better spacing
+    fontFamily: 'Arial',
   },
   input: {
-    height: 50,
-    borderColor: '#00796b',
-    borderWidth: 2,
-    borderRadius: 25,
-    marginBottom: 20,
-    width: '80%',
-    paddingHorizontal: 20,
-    backgroundColor: '#ffffff',
+    height: 45, // Increased height for better touch interaction
+    borderBottomColor: '#cccccc', // Grey bottom border
+    borderBottomWidth: 1, // Bottom border width
+    paddingHorizontal: 10, // Added padding for better readability
+    backgroundColor: 'transparent', // Make background transparent
+    fontFamily: 'Arial',
+    fontSize: 16,
+    color: 'black',
   },
   button: {
-    backgroundColor: '#00796b',
-    borderRadius: 25,
-    paddingVertical: 10,
-    paddingHorizontal: 30,
-    marginBottom: 10,
+    backgroundColor: '#4CAF50', // Light green color
+    borderRadius: 8, // Slightly more rounded corners
+    paddingVertical: 12, // Reduced padding for a slimmer appearance
+    paddingHorizontal: 30, // Reduced padding for a slimmer appearance
+    marginBottom: 15, // Increased margin for better spacing
+    width: '80%', // Adjust width as needed
   },
   buttonText: {
     color: '#ffffff',
     fontSize: 18,
     fontWeight: 'bold',
+    fontFamily: 'Arial',
+    textAlign: 'center', // Center text in button
   },
   error: {
     marginTop: 10,
     fontSize: 16,
     color: 'red',
-  },
-  link: {
-    marginTop: 15,
+    fontFamily: 'Arial',
   },
   linkText: {
-    color: '#00796b',
+    color: '#999999',
+    fontSize: 13,
+    fontWeight: '500',
+    fontFamily: 'Arial',
+    textAlign: 'center', // Center text
+  },
+  signupContainer: {
+    marginTop: 20,
+    alignItems: 'center', // Center items horizontally
+  },
+  createAccountButton: {
+    marginTop: 5,
+  },
+  createAccountText: {
+    color: '#66bb6a', // Light green color
     fontSize: 16,
     fontWeight: '500',
+    fontFamily: 'Arial',
+    textAlign: 'center', // Center text
+  },
+  forgotPasswordLink: {
+    alignSelf: 'flex-end', // Position at the end of the input container
+    marginTop: 5,
+  },
+  forgotPasswordText: {
+    color: '#999999', // Grey color for "Forgot Password?"
+    fontSize: 13,
+    fontWeight: '500',
+    fontFamily: 'Arial',
   },
 });
 
